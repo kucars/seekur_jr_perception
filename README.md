@@ -1,4 +1,4 @@
-Seekur Jr Perception
-====================
+object_recognition
+==================
 
-Seekur Jr Perception
+3D Object recognition related packages
