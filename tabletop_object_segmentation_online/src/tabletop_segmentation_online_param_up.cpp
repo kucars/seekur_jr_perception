@@ -35,6 +35,8 @@
 // Author(s): Marius Muja and Matei Ciocarlie
 
 #include <string>
+#include <iostream>
+
 
 #include <ros/ros.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -63,6 +65,7 @@
 #include <pcl/segmentation/extract_polygonal_prism_data.h>
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl_ros/transforms.h>
+#include <pcl/io/pcd_io.h>
 
 #include "tabletop_object_segmentation_online/marker_generator.h"
 #include <tabletop_object_segmentation_online/TabletopSegmentation.h>
@@ -174,17 +177,18 @@ public:
         priv_nh_.param<int>("inlier_threshold", inlier_threshold_, 300);
         priv_nh_.param<double>("plane_detection_voxel_size", plane_detection_voxel_size_, 0.01);
         priv_nh_.param<double>("clustering_voxel_size", clustering_voxel_size_, 0.003);
-        priv_nh_.param<double>("z_filter_min", z_filter_min_, 0.4);
+        priv_nh_.param<double>("z_filter_min", z_filter_min_, 0.01);
         priv_nh_.param<double>("z_filter_max", z_filter_max_, 1.25);
         priv_nh_.param<double>("y_filter_min", y_filter_min_, -1.0);
         priv_nh_.param<double>("y_filter_max", y_filter_max_, 1.0);
-        priv_nh_.param<double>("x_filter_min", x_filter_min_, -1.0);
-        priv_nh_.param<double>("x_filter_max", x_filter_max_, 1.0);
+        priv_nh_.param<double>("x_filter_min", x_filter_min_, 0.0);
+        priv_nh_.param<double>("x_filter_max", x_filter_max_, 2.0);
         priv_nh_.param<double>("table_z_filter_min", table_z_filter_min_, 0.01);
         priv_nh_.param<double>("table_z_filter_max", table_z_filter_max_, 0.50);
-        priv_nh_.param<double>("cluster_distance", cluster_distance_, 0.03);
-        priv_nh_.param<int>("min_cluster_size", min_cluster_size_, 300);
+        priv_nh_.param<double>("cluster_distance", cluster_distance_, 0.1);
+        priv_nh_.param<int>("min_cluster_size", min_cluster_size_, 50);
         priv_nh_.param<std::string>("processing_frame", processing_frame_, "");
+	ROS_INFO_STREAM("Processing frame before updating:"<<processing_frame_);
         priv_nh_.param<double>("up_direction", up_direction_, -1.0);
         priv_nh_.param<bool>("flatten_table", flatten_table_, false);
         priv_nh_.param<double>("table_padding", table_padding_, 0.0);
@@ -204,9 +208,13 @@ void TabletopSegmentor::updateParameters()
     priv_nh_.getParam("plane_detection_voxel_size", plane_detection_voxel_size_);
     priv_nh_.getParam("clustering_voxel_size", clustering_voxel_size_);
     priv_nh_.getParam("z_filter_min", z_filter_min_);
+    ROS_INFO_STREAM("z_filter_max before:"<<z_filter_max_);
     priv_nh_.getParam("z_filter_max", z_filter_max_);
+    ROS_INFO_STREAM("z_filter_max after:"<<z_filter_max_);
     priv_nh_.getParam("y_filter_min", y_filter_min_);
+    ROS_INFO_STREAM("y_filter_max before:"<<y_filter_max_);
     priv_nh_.getParam("y_filter_max", y_filter_max_);
+    ROS_INFO_STREAM("y_filter_max after:"<<y_filter_max_);
     priv_nh_.getParam("x_filter_min", x_filter_min_);
     ROS_INFO_STREAM("x_filter_max before:"<<x_filter_max_);
     priv_nh_.getParam("x_filter_max", x_filter_max_);
@@ -216,6 +224,7 @@ void TabletopSegmentor::updateParameters()
     priv_nh_.getParam("cluster_distance", cluster_distance_);
     priv_nh_.getParam("min_cluster_size", min_cluster_size_);
     priv_nh_.getParam("processing_frame", processing_frame_);
+    ROS_INFO_STREAM("Processing frame after:"<<processing_frame_);
     priv_nh_.getParam("up_direction", up_direction_);
     priv_nh_.getParam("flatten_table", flatten_table_);
     priv_nh_.getParam("table_padding", table_padding_);
@@ -742,9 +751,22 @@ void TabletopSegmentor::processCloud(const sensor_msgs::PointCloud2 &cloud,
         return;
     }
 
+    //*****************************************before Downsampling ****************************************
+    pcl::PCDWriter writer0;
+    writer0.write<pcl::PointXYZ> ("/home/marbm/catkin_ws_sdp/src/cloud_filtered_ptr.pcd", *cloud_filtered_ptr, false);
+    ROS_INFO (" Done writing to PCD file before first downsampling  ");
+    //***************************************************************************************************
+    
     pcl::PointCloud<Point>::Ptr cloud_downsampled_ptr (new pcl::PointCloud<Point>);
     grid_.setInputCloud (cloud_filtered_ptr);
     grid_.filter (*cloud_downsampled_ptr);
+    
+    //*****************************************After Downsampling ****************************************
+    pcl::PCDWriter writer1;
+    writer1.write<pcl::PointXYZ> ("/home/marbm/catkin_ws_sdp/src/cloud_downsampled_ptr.pcd", *cloud_downsampled_ptr, false);
+    ROS_INFO (" Done writing to PCD file after first downsampling  ");
+    //***************************************************************************************************
+    
     if (cloud_downsampled_ptr->points.size() < (unsigned int)min_cluster_size_)
     {
         ROS_INFO("Downsampled cloud only has %d points", (int)cloud_downsampled_ptr->points.size());
@@ -913,36 +935,91 @@ void TabletopSegmentor::processCloud(const sensor_msgs::PointCloud2 &cloud,
 
     ROS_INFO (" Number of object point candidates: %d.", (int)cloud_objects_ptr->points.size ());
     response.result = response.SUCCESS;
-
+    ROS_INFO (" AFTER Response SUCCESS ");
     if (cloud_objects_ptr->points.empty ())
     {
         ROS_INFO("No objects on table");
         return;
     }
-
+    ROS_INFO (" AFTER Response SUCCESS 2 ");
+    
+    //*****************************************Before Downsampling ****************************************
+    pcl::PCDWriter writer;
+    writer.write<pcl::PointXYZ> ("/home/marbm/catkin_ws_sdp/src/cloud_objects_ptr.pcd", *cloud_objects_ptr, false);
+    ROS_INFO (" Done writing to PCD file before downsampling ");
+    //***************************************************************************************************
+    
+    
     // ---[ Downsample the points
     pcl::PointCloud<Point>::Ptr cloud_objects_downsampled_ptr (new pcl::PointCloud<Point>);
+    std::cout <<"\nBefore downsampling:"<<cloud_objects_ptr->points.size();
     grid_objects_.setInputCloud (cloud_objects_ptr);
     grid_objects_.filter (*cloud_objects_downsampled_ptr);
-
+    ROS_INFO (" AFTER Response SUCCESS 3 ");
     // ---[ If flattening the table, adjust the points on the table to be straight also
-    if(flatten_table_) straightenPoints<pcl::PointCloud<Point> >(*cloud_objects_downsampled_ptr,
-                                                                 table_plane_trans, table_plane_trans_flat);
-
+    std::cout <<"Flatening Talbe is:"<<flatten_table_<<" size after downsampling:"<<cloud_objects_downsampled_ptr->points.size();
+   
+    //*****************************************after Downsampling ****************************************
+    pcl::PCDWriter writer2;
+    writer2.write<pcl::PointXYZ> ("/home/marbm/catkin_ws_sdp/src/cloud_objects_downsampled.pcd", *cloud_objects_downsampled_ptr, false);
+    ROS_INFO (" Done writing to PCD file after downsampling ");
+    //***************************************************************************************************
+    
+    if(flatten_table_) 
+      straightenPoints<pcl::PointCloud<Point> >(*cloud_objects_downsampled_ptr, table_plane_trans, table_plane_trans_flat);
+    
+    std::cout <<"\nSize after flattening:"<<cloud_objects_downsampled_ptr->points.size();
+    
+    ROS_INFO (" AFTER Response SUCCESS 4 ");
     // Step 6: Split the objects into Euclidean clusters
     std::vector<pcl::PointIndices> clusters2;
+    ROS_INFO (" AFTER Response SUCCESS 4.1 ");
     //pcl_cluster_.setInputCloud (cloud_objects_ptr);
     pcl_cluster_.setInputCloud (cloud_objects_downsampled_ptr);
+    ROS_INFO (" AFTER Response SUCCESS 4.2 ");
     pcl_cluster_.extract (clusters2);
+    
+    std::cout <<"\nCluster used for Euclidean Filtering:"<<clusters2.size(); fflush(stdout);
+    
+    ROS_INFO (" AFTER Response SUCCESS 4.3 ");
     ROS_INFO ("Number of clusters found matching the given constraints: %d.", (int)clusters2.size ());
-
+    ROS_INFO (" AFTER Response SUCCESS 4.4 ");
+   
+    ROS_INFO (" AFTER Response SUCCESS 5 ");
     // ---[ Convert clusters into the PointCloud message
     std::vector<sensor_msgs::PointCloud> clusters;
+    ROS_INFO (" AFTER Response SUCCESS 5.1 ");
     getClustersFromPointCloud2<Point> (*cloud_objects_downsampled_ptr, clusters2, clusters);
+  
+    //*****************************************after clustering ********************************************************  
+    int j = 0;
+    for (std::vector<pcl::PointIndices>::const_iterator it = clusters2.begin (); it != clusters2.end (); ++it)
+    {
+      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+      for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
+      cloud_cluster->points.push_back (cloud_objects_downsampled_ptr->points[*pit]); //*
+      cloud_cluster->width = cloud_cluster->points.size ();
+      cloud_cluster->height = 1;
+      cloud_cluster->is_dense = true;
+
+      std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+      std::stringstream ss;
+      ss << "/home/marbm/catkin_ws_sdp/src/cloud_cluster_" << j << ".pcd";
+      writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
+      j++;
+    }
+    //*****************************************after clustering ********************************************************  
+  
+  
+    
+    
+    ROS_INFO (" AFTER Response SUCCESS 5.2 ");
     ROS_INFO("Clusters converted");
     response.clusters = clusters;
-
+    ROS_INFO (" AFTER Response SUCCESS 5.3 ");
+    ROS_INFO (" AFTER Response SUCCESS 6 ");
     publishClusterMarkers(clusters, cloud.header);
+    ROS_INFO (" AFTER Response SUCCESS 7 ");
 }
 
 

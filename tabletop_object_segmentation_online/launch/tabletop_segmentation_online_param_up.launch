@@ -15,7 +15,7 @@
 	<param name="clustering_voxel_size" value="$(arg tabletop_segmentation_clustering_voxel_size)" />
 	<param name="inlier_threshold" value="500" />
 	<param name="plane_detection_voxel_size" value="0.01" />
-	<param name="cluster_distance" value="0.08" />
+	<param name="cluster_distance" value="0.02" />
 	<param name="min_cluster_size" value="50" />
 	<param name="flatten_table" value="$(arg flatten_table)" />
 	<param name="table_padding" value="$(arg table_padding)" />
@@ -28,16 +28,16 @@
 	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="z_filter_max" value="2.0" />
 	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="y_filter_min" value="-2.7" />
 	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="y_filter_max" value="2.7" />
-	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="x_filter_min" value="0.4" />
+	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="x_filter_min" value="0.0" />
 	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="x_filter_max" value="2.5" />
-	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="table_z_filter_min" value="-0.5" />
-	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="table_z_filter_max" value="-0.01" />		
+	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="table_z_filter_min" value="0.01" />
+	<param if="$(arg tabletop_segmentation_convert_to_base_link)" name="table_z_filter_max" value="0.5" />		
 
 	<!-- all clouds will be processed in the incoming frame, which is -->
 	<!-- assumed to the the camera's optical frame -->
 	<param unless="$(arg tabletop_segmentation_convert_to_base_link)" name="processing_frame" value="" />
 	<param unless="$(arg tabletop_segmentation_convert_to_base_link)" name="up_direction" value="1.0" />
-	<param unless="$(arg tabletop_segmentation_convert_to_base_link)" name="z_filter_min" value="0.2" />
+	<param unless="$(arg tabletop_segmentation_convert_to_base_link)" name="z_filter_min" value="0.1" />
 	<param unless="$(arg tabletop_segmentation_convert_to_base_link)" name="z_filter_max" value="4.5" />
 	<param unless="$(arg tabletop_segmentation_convert_to_base_link)" name="y_filter_min" value="-2.5" />
 	<param unless="$(arg tabletop_segmentation_convert_to_base_link)" name="y_filter_max" value="2.5" />

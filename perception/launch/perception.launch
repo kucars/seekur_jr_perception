@@ -1,6 +1,6 @@
 <launch>
   <!-- Kinect -->
-  <include file="$(find openni_launch)/launch/openni.launch"/>
+  <include file="$(find openni2_launch)/launch/openni2.launch"/>
 
   <!-- Tabletop segmentation -->
   <include file="$(find tabletop_object_segmentation_online)/launch/tabletop_segmentation_online_param_up.launch"/>

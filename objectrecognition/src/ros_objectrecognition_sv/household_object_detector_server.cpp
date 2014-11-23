@@ -136,6 +136,8 @@ public:
     ros::ServiceServer service;
 
     tf::TransformListener listener;
+  
+    
     ros::NodeHandle n;
     ros::NodeHandle n_priv;
 
@@ -260,7 +262,8 @@ public:
             try
             {
                 ros::Time now = ros::Time::now();
-                listener.waitForTransform   (processing_frame, clus.header.frame_id, now, ros::Duration(1.0));
+		
+                listener.waitForTransform(processing_frame, clus.header.frame_id, now, ros::Duration(10.0));//was 1 second
                 listener.transformPointCloud(processing_frame, clus, clusterProcessingFrame);
                 //listener.transformPointCloud(processing_frame, now, clus, processing_frame, clusterProcessingFrame);
 

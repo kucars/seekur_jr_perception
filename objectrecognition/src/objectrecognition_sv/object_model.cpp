@@ -402,7 +402,7 @@ void objectModelSV::train()
 	std::cout<< "\tCloud size after removing NaN normals: " << modelCloud->size() << endl;
 
 	hashTable.resize(pointPairSV::maxHash);
-	int features_perdidas_por_erro_de_amostragem=0;
+	int features_perdidas_por_erro_de_amostragem=0; //features missed by sampling error
 	if(symmetric)	
 	{
 
